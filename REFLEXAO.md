@@ -40,3 +40,18 @@ No REST não existe essa garantia. O contrato é uma convenção implícita que 
 O xmlrpc.client.Fault carrega apenas dois campos: faultCode (inteiro genérico) e faultString (texto livre). O código é arbitrário, cada servidor define os seus próprios números sem padronização, então o cliente precisa conhecer a convenção específica daquele servidor para interpretar o erro.
 O grpc.RpcError carrega um StatusCode padronizado do protocolo (como INVALID_ARGUMENT, NOT_FOUND, PERMISSION_DENIED) mais uma mensagem descritiva. O StatusCode é parte da especificação do gRPC, qualquer cliente, em qualquer linguagem, interpreta NOT_FOUND da mesma forma sem precisar conhecer convenções do servidor específico.
 A diferença prática é que com grpc.RpcError o cliente pode tomar decisões programáticas baseadas no código, por exemplo, só fazer retry em UNAVAILABLE e não em INVALID_ARGUMENT. Com Fault o cliente teria que parsear o faultString como texto para inferir isso, o que é frágil e não padronizado.
+
+## Tarefa 5
+
+- A tipagem forte do .proto é vantagem em microserviços internos porque todos os serviços são controlados pela mesma organização. Quando o contrato muda, todos os times atualizam o .proto e recompilam, o erro aparece em tempo de compilação antes de ir para produção. Isso garante que nenhum serviço interno fique desatualizado silenciosamente.
+Em APIs públicas é uma barreira porque o servidor não controla quem são os clientes. Um cliente externo precisaria instalar o protoc, gerar o código na sua linguagem e recompilar toda vez que o contrato mudar, enquanto com REST+JSON basta fazer uma requisição HTTP com qualquer biblioteca padrão, sem geração de código. Além disso, JSON é legível por humanos e inspecionável no browser, o que facilita a adoção por desenvolvedores externos que estão explorando a API pela primeira vez.
+- O REST é orientado a recursos porque toda operação é expressa como uma manipulação de um recurso identificado por URI via verbos HTTP padronizados. O RPC é orientado a ações porque expõe procedimentos, o cliente chama uma função nomeada no servidor.
+Modelando "cancelar um pedido" nas duas formas:
+REST:
+PATCH /pedidos/42
+{ "status": "cancelado" }
+O cancelamento é expresso como uma atualização do recurso pedido. A implicação é que o cliente precisa conhecer o modelo de estados do recurso, saber que mudar status para cancelado dispara a lógica de cancelamento.
+RPC:
+stub.CancelarPedido(pedido_id=42)
+A intenção é explícita e direta. A implicação é que o servidor expõe uma ação nomeada para cada operação do domínio.
+A tensão do REST aparece exatamente em operações como essa, "cancelar" é uma ação, não um recurso, e forçá-la no modelo REST exige uma tradução que pode obscurecer a intenção. O RPC nesse caso é mais expressivo para operações de domínio complexas.
