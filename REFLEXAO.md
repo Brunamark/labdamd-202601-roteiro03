@@ -10,3 +10,21 @@
 - Marshalling (cliente) converte os parâmetros em um formato transmissível pela rede. Dispatching (servidor) recebe os bytes, identifica qual método foi chamado e encaminha para a função correta. Unmarshalling (servidor) converte os bytes de volta para os tipos nativos da linguagem, para passar à função real. Isso já está nos comentários do código.
 - A diferença é que o JSON é um formato feito para leitura humana e o protobuf para comunicação entre máquinas já que é binário. Isso implica que o JSON vai possuir um overhead maior ( mais verboso e maior), implicando em uma desserialização e serialização mais lenta ( marshalling e unmarshalling) em relação ao Protobuf, sendo assim, ele será menos performático.
 - O TCP é um protocolo de stream de bytes, não preserva fronteiras de mensagem, podendo entregar dois envios juntos ou um envio fragmentado em partes. Sem framing, o servidor não saberia onde uma mensagem termina e a próxima começa, podendo tentar fazer unmarshalling de bytes incompletos ou de duas mensagens fundidas, corrompendo os dados ou travando esperando bytes que já chegaram mas foram interpretados como parte da mensagem anterior.
+
+## Tarefa 3
+
+- `201` carrega semântica adicional — um proxy ou cache genérico ao receber 201 sabe que:
+
+  - Um novo recurso foi criado
+  - O header Location deve indicar onde esse recurso está (ex: Location: `/produtos/42`)
+  - Não deve cachear a resposta
+
+Com `200` o cliente não saberia distinguir "busquei algo" de "criei algo". A semântica do código permite que qualquer intermediário na rede tome decisões corretas sem entender o domínio da aplicação.
+- O _produtos em memória precisa ir para um banco de dados para garantir persistência. Isso não viola o stateless de Fielding porque os dados persistidos são estado do recurso, não estado de sessão. O que tornaria o servidor não-stateless seria guardar contexto da interação com o cliente entre requisições, como sessões ou fluxos de múltiplos passos dependentes.
+- A interface uniforme do REST é mais clara porque:
+
+  - O verbo HTTP (POST, GET, DELETE) já comunica a intenção
+  - A URL (/calculos) identifica o recurso
+  - O corpo JSON descreve os dados
+
+Qualquer cliente genérico entende o contrato sem documentação extra. No RPC, proxy.calcular poderia fazer qualquer coisa, só quem escreveu o servidor sabe.
