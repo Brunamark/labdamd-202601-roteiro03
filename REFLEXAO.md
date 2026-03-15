@@ -28,3 +28,15 @@ Com `200` o cliente não saberia distinguir "busquei algo" de "criei algo". A se
   - O corpo JSON descreve os dados
 
 Qualquer cliente genérico entende o contrato sem documentação extra. No RPC, proxy.calcular poderia fazer qualquer coisa, só quem escreveu o servidor sabe.
+
+
+## Tarefa 4
+
+- Ter um contrato explícito no .proto garante que cliente e servidor estejam sincronizados de forma verificável. O protoc gera código tipado para ambos os lados, então se o servidor mudar o campo resultado de double para string sem atualizar o .proto, o erro é detectado em tempo de compilação, o cliente simplesmente não compila.
+No REST não existe essa garantia. O contrato é uma convenção implícita que vive em documentação externa (Swagger, README) que pode estar desatualizada. Se o servidor mudar o tipo do campo, o cliente só descobre em tempo de execução, recebe uma string onde esperava um número, podendo gerar uma exceção ou, pior, um cálculo silenciosamente errado sem nenhum aviso.
+
+- São parecidos mas não equivalentes, o gRPC é mais rico semanticamente. O HTTP 400 é um código genérico que cobre qualquer erro do cliente, independente da causa. A explicação específica fica no corpo JSON, que é texto livre e não padronizado, cada API inventa seu próprio formato. O gRPC possui códigos específicos para cada situação: INVALID_ARGUMENT para campos inválidos, OUT_OF_RANGE para valores fora do intervalo esperado, NOT_FOUND para recurso inexistente, PERMISSION_DENIED para falta de permissão. O código em si já carrega a semântica, qualquer cliente genérico sabe exatamente o tipo do erro sem precisar parsear o corpo da resposta, tornando o tratamento de erros mais preciso e previsível.
+- Os dois são mecanismos de propagação de erro entre processos, mas o grpc.RpcError oferece mais informação estruturada.
+O xmlrpc.client.Fault carrega apenas dois campos: faultCode (inteiro genérico) e faultString (texto livre). O código é arbitrário, cada servidor define os seus próprios números sem padronização, então o cliente precisa conhecer a convenção específica daquele servidor para interpretar o erro.
+O grpc.RpcError carrega um StatusCode padronizado do protocolo (como INVALID_ARGUMENT, NOT_FOUND, PERMISSION_DENIED) mais uma mensagem descritiva. O StatusCode é parte da especificação do gRPC, qualquer cliente, em qualquer linguagem, interpreta NOT_FOUND da mesma forma sem precisar conhecer convenções do servidor específico.
+A diferença prática é que com grpc.RpcError o cliente pode tomar decisões programáticas baseadas no código, por exemplo, só fazer retry em UNAVAILABLE e não em INVALID_ARGUMENT. Com Fault o cliente teria que parsear o faultString como texto para inferir isso, o que é frágil e não padronizado.
